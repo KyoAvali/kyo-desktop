@@ -12,13 +12,16 @@
         </ng-template>
     </p-dock>
 
-    <p-dialog
-        [(visible)]="visible"
-        [modal]="false"
-        [draggable]="true"
-        [resizable]="true"
-        [header]="dialogTitle"
-        styleClass="w-full md:w-50">
-        <p class="m-0">{{ dialogContent }}</p>
-    </p-dialog>
+    @for (dialog of dialogs; track dialog.id) {
+        <p-dialog
+            [(visible)]="dialog.visible"
+            [modal]="false"
+            [draggable]="true"
+            [resizable]="true"
+            [header]="dialog.title"
+            [style]="{'width': '50vw'}"
+            (onHide)="removeDialog(dialog.id)">
+            <p class="m-0">{{ dialog.content }}</p>
+        </p-dialog>
+    }
 </div>

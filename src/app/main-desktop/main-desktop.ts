@@ -14,9 +14,8 @@ import { MenuItem } from 'primeng/api';
 export class MainDesktop {
 
   dockItems: MenuItem[] | undefined;
-  visible: boolean = false;
-  dialogTitle: string = '';
-  dialogContent: string = '';
+  dialogs: AppDialog[] = [];
+  private dialogIdCounter: number = 0;
 
   ngOnInit() {
     this.dockItems = [
@@ -59,8 +58,31 @@ export class MainDesktop {
   }
 
   showDialog(title: string, content: string) {
-    this.dialogTitle = title;
-    this.dialogContent = content;
-    this.visible = true;
+    const id = `dialog-${this.dialogIdCounter++}`;
+    const newDialog: AppDialog = {
+      id,
+      title,
+      content,
+      visible: true
+    };
+    this.dialogs.push(newDialog);
   }
+
+  closeDialog(id: string) {
+    const dialog = this.dialogs.find(d => d.id === id);
+    if (dialog) {
+      dialog.visible = false;
+    }
+  }
+
+  removeDialog(id: string) {
+    this.dialogs = this.dialogs.filter(d => d.id !== id);
+  }
+}
+
+export interface AppDialog {
+  id: string;
+  title: string;
+  content: string;
+  visible: boolean;
 }
