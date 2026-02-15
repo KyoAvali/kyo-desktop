@@ -1,0 +1,22 @@
+.dock-item-wrapper {
+    transition: transform 0.2s ease;
+    
+    &:hover {
+        transform: scale(1.2) translateY(-10px);
+        cursor: pointer;
+    }
+    
+    img {
+        transition: transform 0.2s ease;
+    }
+}
+
+:host ::ng-deep .p-dock {
+    .p-dock-item {
+        transition: all 0.2s ease;
+        
+        &:hover {
+            transform: scale(1.2) translateY(-10px);
+        }
+    }
+}
