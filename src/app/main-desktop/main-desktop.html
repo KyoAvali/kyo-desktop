@@ -1,0 +1,12 @@
+<div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: url('https://primefaces.org/cdn/primeng/images/dock/window.jpg') no-repeat center center / cover; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+    <div style="text-align: center; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        <h1 style="font-size: 3rem; margin-bottom: 0.5rem;">Welcome to My Desktop</h1>
+        <p style="font-size: 1.5rem;">Explore my profile using the dock below.</p>
+    </div>
+
+    <p-dock [model]="dockItems" position="bottom">
+        <ng-template pTemplate="item" let-item>
+            <img [src]="item.icon" [alt]="item.label" width="100%" style="width: 100%; height: 100%; display: block;" />
+        </ng-template>
+    </p-dock>
+</div>
