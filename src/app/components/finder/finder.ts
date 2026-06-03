@@ -22,8 +22,10 @@ export class Finder implements OnInit, OnChanges {
     currentPath = '/Kyo';
     currentFiles: FileInfo[] = [];
     currentFolders: string[] = [];
+    selectedFile: string | null = null;
 
     @Input() initialPath: string = '/Kyo';
+    @Input() targetFile: string | null = null;
 
     private manifest: Manifest | null = null;
 
@@ -40,14 +42,22 @@ export class Finder implements OnInit, OnChanges {
     }
 
     ngOnChanges() {
-        if (this.manifest && this.initialPath) {
-            this.loadFolder(this.initialPath);
+        console.log('Finder ngOnChanges - initialPath:', this.initialPath, 'targetFile:', this.targetFile, 'manifest:', !!this.manifest);
+        if (this.manifest) {
+            const pathToLoad = this.initialPath || '/Kyo';
+            console.log('Loading folder:', pathToLoad);
+            this.loadFolder(pathToLoad);
+            if (this.targetFile) {
+                this.selectedFile = this.targetFile;
+            }
         }
     }
 
     private loadManifest() {
+        console.log('Loading manifest...');
         this.http.get<Manifest>('/files/manifest.json').subscribe({
             next: (data) => {
+                console.log('Manifest loaded:', data);
                 this.manifest = data;
                 this.loadFolder(this.initialPath || '/Kyo');
             },
@@ -73,12 +83,16 @@ export class Finder implements OnInit, OnChanges {
     }
 
     loadFolder(path: string) {
+        console.log('Loading folder path:', path);
         this.currentPath = path;
+        console.log('Manifest folders:', this.manifest?.folders);
         if (this.manifest && this.manifest.folders[path]) {
             const node = this.manifest.folders[path];
             this.currentFolders = node.folders;
             this.currentFiles = node.files.map((name) => this.fileFromName(name));
+            console.log('Loaded folder - folders:', this.currentFolders, 'files:', this.currentFiles);
         } else {
+            console.log('Folder not found in manifest:', path);
             this.currentFolders = [];
             this.currentFiles = [];
         }
@@ -100,6 +114,7 @@ export class Finder implements OnInit, OnChanges {
 
     openFile(file: FileInfo) {
         if ((file.type === 'html' || file.type === 'image') && file.url) {
+            this.selectedFile = file.name;
             this.dialogService.openPreview({ name: file.name, type: file.type, url: file.url });
         }
     }

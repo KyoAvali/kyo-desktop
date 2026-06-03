@@ -15,6 +15,7 @@ export interface AppDialog {
     visible: boolean;
     loading?: boolean;
     finderPath?: string;
+    targetFile?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -56,10 +57,10 @@ export class DialogService {
         this.openDialog('Terminal', '', 'terminal', '70vw', '450px');
     }
 
-    openDialog(title: string, content: string, type: string, width: string, height: string, previewType = '', fileUrl = '', finderPath = '') {
+    openDialog(title: string, content: string, type: string, width: string, height: string, previewType = '', fileUrl = '', finderPath = '', targetFile = '') {
         const id = `dialog-${this.dialogIdCounter++}`;
         this.dialogs$.next([...this.dialogs$.getValue(), {
-            id, title, content, type, width, height, previewType, fileUrl, visible: true, finderPath
+            id, title, content, type, width, height, previewType, fileUrl, visible: true, finderPath, targetFile
         }]);
     }
 

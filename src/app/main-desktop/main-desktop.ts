@@ -12,6 +12,8 @@ import { DialogService } from '../services/dialog.service';
 import { AsyncPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { SkeletonModule } from 'primeng/skeleton';
+import { Router, NavigationEnd } from '@angular/router';
+import { RouterModule } from '@angular/router';
 
 interface Manifest {
     folders: Record<string, FolderNode>;
@@ -30,7 +32,7 @@ interface DesktopItem {
 
 @Component({
     selector: 'app-main-desktop',
-    imports: [ButtonModule, DockModule, DialogModule, TooltipModule, MenubarModule, Finder, TerminalComponent, AsyncPipe, SkeletonModule],
+    imports: [ButtonModule, DockModule, DialogModule, TooltipModule, MenubarModule, Finder, TerminalComponent, AsyncPipe, SkeletonModule, RouterModule],
     templateUrl: './main-desktop.html',
     styleUrl: './main-desktop.scss',
 })
@@ -45,7 +47,8 @@ export class MainDesktop implements OnInit {
     constructor(
         @Inject(PLATFORM_ID) private platformId: any,
         public dialogService: DialogService,
-        private http: HttpClient
+        private http: HttpClient,
+        private router: Router
     ) {
         this.isBrowser = isPlatformBrowser(platformId);
     }
@@ -67,6 +70,54 @@ export class MainDesktop implements OnInit {
         ];
 
         this.loadDesktopItems();
+        this.handleRouteChanges();
+    }
+
+    private handleRouteChanges() {
+        if (!isPlatformBrowser(this.platformId)) return;
+
+        this.router.events.subscribe((event) => {
+            if (event instanceof NavigationEnd) {
+                this.processUrlParams();
+            }
+        });
+    }
+
+    private processUrlParams() {
+        if (!isPlatformBrowser(this.platformId)) return;
+
+        const url = new URL(window.location.href);
+        const path = url.pathname;
+        const params = url.searchParams;
+
+        if (path === '/finder') {
+            const folder = params.get('folder');
+            const file = params.get('file');
+
+            if (file) {
+                // If file parameter is provided, open file preview dialog ONLY
+                this.dialogService.openPreview({
+                    name: file,
+                    type: this.getFileType(file),
+                    url: `/files/${file}`
+                });
+            } else if (folder) {
+                // If only folder parameter is provided, open Finder dialog at that folder
+                this.dialogService.openFinder(folder);
+            } else {
+                // If no file or folder parameter, open Finder at root
+                this.dialogService.openFinder('/Kyo');
+            }
+        } else if (path === '/terminal') {
+            this.dialogService.openTerminal();
+        }
+    }
+
+    private getFileType(fileName: string): string {
+        const ext = fileName.split('.').pop()?.toLowerCase() || '';
+        if (['html', 'htm'].includes(ext)) return 'html';
+        if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp'].includes(ext)) return 'image';
+        return 'text';
     }
 
     private loadDesktopItems() {

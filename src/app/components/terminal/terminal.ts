@@ -1,6 +1,7 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { DialogService } from '../../services/dialog.service';
 
 @Component({
     selector: 'app-terminal',
@@ -28,6 +29,7 @@ export class TerminalComponent implements OnInit {
             '  ls            - List files',
             '  pwd           - Print working directory',
             '  cat [file]    - Display file contents',
+            '  finder [file] - Open Finder dialog, optionally with file parameter',
             '  uname         - Show system info'
         ],
         clear: () => {
@@ -43,8 +45,39 @@ export class TerminalComponent implements OnInit {
             if (!args.length) return ['Usage: cat <filename>'];
             return [`Mock contents of ${args[0]}`];
         },
+        finder: (args) => {
+            if (!args.length) {
+                this.dialogService.openFinder();
+                return ['Opening Finder...'];
+            } else {
+                const target = args[0];
+                // Check if it looks like a path (contains /) or a file (has extension)
+                if (target.includes('/') || target.includes('.')) {
+                    // Try to determine if it's a folder or file
+                    if (target.includes('.')) {
+                        // Looks like a file, open file preview
+                        this.dialogService.openPreview({
+                            name: target,
+                            type: this.getFileType(target),
+                            url: `/files/${target}`
+                        });
+                        return [`Opening file: ${target}`];
+                    } else {
+                        // Looks like a folder, open Finder at that folder
+                        this.dialogService.openFinder(target);
+                        return [`Opening Finder at: ${target}`];
+                    }
+                } else {
+                    // Default to folder
+                    this.dialogService.openFinder(target);
+                    return [`Opening Finder at: ${target}`];
+                }
+            }
+        },
         uname: () => ['KyoOS 1.0.0 (Desktop)']
     };
+
+    constructor(private dialogService: DialogService) {}
 
     ngOnInit() {
         this.outputLines = [
@@ -96,6 +129,13 @@ export class TerminalComponent implements OnInit {
 
     navigateCommand(direction: number) {
         this.navigateHistory(direction);
+    }
+
+    private getFileType(fileName: string): string {
+        const ext = fileName.split('.').pop()?.toLowerCase() || '';
+        if (['html', 'htm'].includes(ext)) return 'html';
+        if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp'].includes(ext)) return 'image';
+        return 'text';
     }
 
     private scrollToBottom() {
