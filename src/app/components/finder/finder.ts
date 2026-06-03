@@ -42,10 +42,8 @@ export class Finder implements OnInit, OnChanges {
     }
 
     ngOnChanges() {
-        console.log('Finder ngOnChanges - initialPath:', this.initialPath, 'targetFile:', this.targetFile, 'manifest:', !!this.manifest);
         if (this.manifest) {
             const pathToLoad = this.initialPath || '/Kyo';
-            console.log('Loading folder:', pathToLoad);
             this.loadFolder(pathToLoad);
             if (this.targetFile) {
                 this.selectedFile = this.targetFile;
@@ -54,10 +52,8 @@ export class Finder implements OnInit, OnChanges {
     }
 
     private loadManifest() {
-        console.log('Loading manifest...');
         this.http.get<Manifest>('/files/manifest.json').subscribe({
             next: (data) => {
-                console.log('Manifest loaded:', data);
                 this.manifest = data;
                 this.loadFolder(this.initialPath || '/Kyo');
             },
@@ -83,19 +79,30 @@ export class Finder implements OnInit, OnChanges {
     }
 
     loadFolder(path: string) {
-        console.log('Loading folder path:', path);
-        this.currentPath = path;
-        console.log('Manifest folders:', this.manifest?.folders);
         if (this.manifest && this.manifest.folders[path]) {
             const node = this.manifest.folders[path];
             this.currentFolders = node.folders;
-            this.currentFiles = node.files.map((name) => this.fileFromName(name));
-            console.log('Loaded folder - folders:', this.currentFolders, 'files:', this.currentFiles);
+            this.currentFiles = node.files.map(name => this.fileFromName(name));
         } else {
-            console.log('Folder not found in manifest:', path);
-            this.currentFolders = [];
-            this.currentFiles = [];
+            // Fallback data
+            if (path === '/Kyo') {
+                this.currentFolders = ['Documents', 'Images'];
+                this.currentFiles = ['sky.html', 'background.jpg'].map(name => this.fileFromName(name));
+            } else if (path === '/Kyo/Documents') {
+                this.currentFolders = [];
+                this.currentFiles = ['sky.html'].map(name => this.fileFromName(name));
+            } else if (path === '/Kyo/Images') {
+                this.currentFolders = [];
+                this.currentFiles = ['background.jpg'].map(name => this.fileFromName(name));
+            } else if (path === '/Kyo/Desktop') {
+                this.currentFolders = ['Documents', 'Images'];
+                this.currentFiles = [];
+            } else {
+                this.currentFolders = [];
+                this.currentFiles = [];
+            }
         }
+        this.currentPath = path;
     }
 
     private fileFromName(name: string): FileInfo {

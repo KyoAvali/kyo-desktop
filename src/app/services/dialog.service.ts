@@ -1,6 +1,8 @@
 import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { BehaviorSubject } from 'rxjs';
+import { Router } from '@angular/router';
+import { isPlatformBrowser } from '@angular/common';
 
 export interface AppDialog {
     id: string;
@@ -26,8 +28,26 @@ export class DialogService {
     readonly dialogs = this.dialogs$.asObservable();
 
     constructor(
-        private sanitizer: DomSanitizer
-    ) {}
+        private sanitizer: DomSanitizer,
+        private router: Router,
+        @Inject(PLATFORM_ID) private platformId: object
+    ) {
+        this.subscribeToDialogChanges();
+    }
+
+    private subscribeToDialogChanges() {
+        if (!isPlatformBrowser(this.platformId)) return;
+
+        this.dialogs$.subscribe((dialogs) => {
+            const visibleDialogs = dialogs.filter(d => d.visible);
+            const currentUrl = this.router.url;
+
+            // If no dialogs are visible and we're on /finder or /terminal route, clear the URL
+            if (visibleDialogs.length === 0 && (currentUrl.startsWith('/finder') || currentUrl.startsWith('/terminal'))) {
+                this.router.navigateByUrl('/', { replaceUrl: true });
+            }
+        });
+    }
 
     openPreview(file: { name: string; type: string; url: string }) {
         const id = `dialog-${this.dialogIdCounter++}`;
@@ -69,6 +89,9 @@ export class DialogService {
             d.id === id ? { ...d, visible: false } : d
         );
         this.dialogs$.next(dialogs);
+        
+        // Remove the dialog after a short delay to allow for animation
+        setTimeout(() => this.remove(id), 300);
     }
 
     remove(id: string) {
