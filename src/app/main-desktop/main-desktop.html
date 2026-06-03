@@ -1,9 +1,8 @@
-<div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: url('https://primefaces.org/cdn/primeng/images/dock/window.jpg') no-repeat center center / cover; overflow: visible; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 0 20px 20px 20px; box-sizing: border-box;">
-    <div style="text-align: center; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
-        <h1 style="font-size: 3rem; margin-bottom: 0.5rem;">Welcome to My Desktop</h1>
-        <p style="font-size: 1.5rem;">Explore my profile using the dock below.</p>
-    </div>
+<div style="position: fixed; top: 26px; left: 0; width: 100vw; height: calc(100vh - 26px); background: url('/background.jpg') no-repeat center center / cover; overflow: visible; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding: 0 20px 20px 20px; box-sizing: border-box;">
+    <p-menubar [model]="menuItems" [style]="{'width': '100%', 'position': 'fixed', 'top': 0, 'left': 0, 'z-index': 1000, 'height': '26px', 'padding': '0 8px'}">
+    </p-menubar>
 
+    @if (isBrowser) {
     <p-dock [model]="dockItems" position="bottom">
         <ng-template pTemplate="item" let-item>
             <div class="dock-item-wrapper">
@@ -11,6 +10,7 @@
             </div>
         </ng-template>
     </p-dock>
+    }
 
     @for (dialog of dialogs; track dialog.id) {
         <p-dialog
@@ -20,9 +20,31 @@
             [resizable]="true"
             [maximizable]="true"
             [header]="dialog.title"
-            [style]="{'width': '50vw'}"
+            [style]="{'width': dialog.width, 'height': dialog.height}"
             (onHide)="removeDialog(dialog.id)">
-            <p class="m-0">{{ dialog.content }}</p>
+            @if (dialog.type === 'finder') {
+                <app-finder (fileOpened)="onFileOpened($event)"></app-finder>
+            } @else if (dialog.type === 'terminal') {
+                <app-terminal></app-terminal>
+            } @else if (dialog.type === 'preview') {
+                @if (dialog.loading) {
+                    <div class="preview-loading">
+                        <div class="spinner"></div>
+                        <p>Loading {{ dialog.previewType === 'html' ? 'document' : 'image' }}...</p>
+                    </div>
+                } @else {
+                    <div class="preview-content">
+                        @if (dialog.previewType === 'image') {
+                            <img [src]="dialog.fileUrl" [alt]="dialog.title" />
+                        }
+                        @if (dialog.previewType === 'html') {
+                            <iframe [src]="dialog.fileUrl" sandbox="allow-same-origin"></iframe>
+                        }
+                    </div>
+                }
+            } @else {
+                <p class="m-0">{{ dialog.content }}</p>
+            }
         </p-dialog>
     }
 </div>

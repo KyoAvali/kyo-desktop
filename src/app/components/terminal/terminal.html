@@ -1,0 +1,23 @@
+<div class="terminal-container">
+    <div class="terminal-content" #terminalContent>
+        <div class="terminal-output">
+            @for (line of outputLines; track line) {
+                <div class="output-line">{{ line }}</div>
+            }
+        </div>
+        <div class="terminal-input-line">
+            <span class="prompt">user@kyo</span>
+            <span class="prompt-path">{{ currentDir }}</span>
+            <span class="prompt-symbol">$ </span>
+            <input
+                type="text"
+                class="terminal-input"
+                [(ngModel)]="currentInput"
+                (keydown.enter)="executeCommand()"
+                (keydown.up)="navigateHistory(-1)"
+                (keydown.down)="navigateCommand(1)"
+                autofocus
+            />
+        </div>
+    </div>
+</div>

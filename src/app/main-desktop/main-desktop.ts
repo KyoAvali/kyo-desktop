@@ -1,68 +1,99 @@
-import { Component } from '@angular/core';
+import { Component, Inject, OnInit, PLATFORM_ID } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { DockModule } from 'primeng/dock';
 import { DialogModule } from 'primeng/dialog';
 import { TooltipModule } from 'primeng/tooltip';
+import { MenubarModule } from 'primeng/menubar';
 import { MenuItem } from 'primeng/api';
+import { isPlatformBrowser } from '@angular/common';
+import { Finder } from '../components/finder/finder';
+import { TerminalComponent } from '../components/terminal/terminal';
+
+interface PreviewFile {
+    name: string;
+    type: string;
+    url: string;
+}
 
 @Component({
   selector: 'app-main-desktop',
-  imports: [ButtonModule, DockModule, DialogModule, TooltipModule],
+  imports: [ButtonModule, DockModule, DialogModule, TooltipModule, MenubarModule, Finder, TerminalComponent],
   templateUrl: './main-desktop.html',
   styleUrl: './main-desktop.scss',
 })
 export class MainDesktop {
 
+  isBrowser: boolean;
   dockItems: MenuItem[] | undefined;
+  menuItems: MenuItem[] | undefined;
   dialogs: AppDialog[] = [];
   private dialogIdCounter: number = 0;
 
+  constructor(@Inject(PLATFORM_ID) platformId: any) {
+    this.isBrowser = isPlatformBrowser(platformId);
+  }
+
   ngOnInit() {
+    this.menuItems = [];
+
     this.dockItems = [
       {
         label: 'Finder',
         icon: 'https://primefaces.org/cdn/primeng/images/dock/finder.svg',
-        command: () => this.showDialog('Finder', 'Finder allows you to browse and organize your files. You can search for files, open them, and manage your storage.')
+        command: () => this.openFinder()
       },
       {
         label: 'Terminal',
         icon: 'https://primefaces.org/cdn/primeng/images/dock/terminal.svg',
-        command: () => this.showDialog('Terminal', 'Terminal gives you access to the command line interface. You can run commands, manage files, and execute scripts.')
-      },
-      {
-        label: 'App Store',
-        icon: 'https://primefaces.org/cdn/primeng/images/dock/appstore.svg',
-        command: () => this.showDialog('App Store', 'App Store is your destination for discovering and downloading apps for Mac. Browse categories, read reviews, and purchase apps.')
-      },
-      {
-        label: 'Safari',
-        icon: 'https://primefaces.org/cdn/primeng/images/dock/safari.svg',
-        command: () => this.showDialog('Safari', 'Safari is a web browser developed by Apple. Browse the internet, bookmark your favorite sites, and enjoy seamless web experience.')
-      },
-      {
-        label: 'Photos',
-        icon: 'https://primefaces.org/cdn/primeng/images/dock/photos.svg',
-        command: () => this.showDialog('Photos', 'Photos helps you organize, edit, and share your photos and videos. Create albums, apply filters, and cherish your memories.')
-      },
-      {
-        label: 'GitHub',
-        icon: 'https://primefaces.org/cdn/primeng/images/dock/github.svg',
-        command: () => this.showDialog('GitHub', 'GitHub is a platform for version control and collaboration. Host and review code, manage projects, and build software with the community.')
-      },
-      {
-        label: 'Trash',
-        icon: 'https://primefaces.org/cdn/primeng/images/dock/trash.png',
-        command: () => this.showDialog('Trash', 'Trash contains files you have deleted. You can restore files from Trash or empty it to permanently delete them.')
+        command: () => this.openTerminal()
       }
     ];
   }
 
-  showDialog(title: string, content: string) {
+  openFinder() {
+    this.showDialog('Finder', '', 'finder', '60vw', '400px');
+  }
+
+  openTerminal() {
+    this.showDialog('Terminal', '', 'terminal', '70vw', '450px');
+  }
+
+  onFileOpened(file: PreviewFile) {
+    const id = `dialog-${this.dialogIdCounter++}`;
+    const newDialog: AppDialog = {
+      id,
+      title: file.name,
+      content: '',
+      type: 'preview',
+      width: '80vw',
+      height: '80vh',
+      previewType: file.type,
+      fileUrl: file.url,
+      visible: true,
+      loading: true
+    };
+    this.dialogs.push(newDialog);
+    
+    // Simulate loading - remove loading after small delay to show file
+    setTimeout(() => {
+      const dialog = this.dialogs.find(d => d.id === id);
+      if (dialog) {
+        dialog.loading = false;
+      }
+    }, 100);
+  }
+
+  showDialog(title: string, content: string, type: string = 'text', width: string = '50vw', height: string = 'auto', previewType: string = '', fileUrl: string = '') {
     const id = `dialog-${this.dialogIdCounter++}`;
     const newDialog: AppDialog = {
       id,
       title,
       content,
+      type,
+      width,
+      height,
+      previewType,
+      fileUrl,
       visible: true
     };
     this.dialogs.push(newDialog);
@@ -84,5 +115,11 @@ export interface AppDialog {
   id: string;
   title: string;
   content: string;
+  type: string;
+  width: string;
+  height: string;
+  previewType: string;
+  fileUrl: string;
   visible: boolean;
+  loading?: boolean;
 }

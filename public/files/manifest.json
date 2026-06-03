@@ -1,0 +1,20 @@
+{
+  "folders": {
+    "/Desktop": {
+      "folders": ["Documents", "Images", "Projects"],
+      "files": ["welcome.html", "readme.html", "photo.jpg"]
+    },
+    "/Desktop/Documents": {
+      "folders": [],
+      "files": ["report.html", "readme.html"]
+    },
+    "/Desktop/Images": {
+      "folders": [],
+      "files": ["wallpaper.jpg", "photo.jpg", "profile.png"]
+    },
+    "/Desktop/Projects": {
+      "folders": [],
+      "files": ["welcome.html", "readme.html"]
+    }
+  }
+}
