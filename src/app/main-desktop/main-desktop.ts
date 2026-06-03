@@ -8,118 +8,117 @@ import { MenuItem } from 'primeng/api';
 import { isPlatformBrowser } from '@angular/common';
 import { Finder } from '../components/finder/finder';
 import { TerminalComponent } from '../components/terminal/terminal';
+import { DialogService } from '../services/dialog.service';
+import { AsyncPipe } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { SkeletonModule } from 'primeng/skeleton';
 
-interface PreviewFile {
+interface Manifest {
+    folders: Record<string, FolderNode>;
+}
+
+interface FolderNode {
+    folders: string[];
+    files: string[];
+}
+
+interface DesktopItem {
     name: string;
-    type: string;
-    url: string;
+    type: 'html' | 'image' | 'folder' | 'text';
+    url?: string;
 }
 
 @Component({
-  selector: 'app-main-desktop',
-  imports: [ButtonModule, DockModule, DialogModule, TooltipModule, MenubarModule, Finder, TerminalComponent],
-  templateUrl: './main-desktop.html',
-  styleUrl: './main-desktop.scss',
+    selector: 'app-main-desktop',
+    imports: [ButtonModule, DockModule, DialogModule, TooltipModule, MenubarModule, Finder, TerminalComponent, AsyncPipe, SkeletonModule],
+    templateUrl: './main-desktop.html',
+    styleUrl: './main-desktop.scss',
 })
-export class MainDesktop {
+export class MainDesktop implements OnInit {
 
-  isBrowser: boolean;
-  dockItems: MenuItem[] | undefined;
-  menuItems: MenuItem[] | undefined;
-  dialogs: AppDialog[] = [];
-  private dialogIdCounter: number = 0;
+    isBrowser: boolean;
+    dockItems: MenuItem[] | undefined;
+    menuItems: MenuItem[] | undefined;
+    desktopItems: DesktopItem[] = [];
+    desktopLoading = true;
 
-  constructor(@Inject(PLATFORM_ID) platformId: any) {
-    this.isBrowser = isPlatformBrowser(platformId);
-  }
-
-  ngOnInit() {
-    this.menuItems = [];
-
-    this.dockItems = [
-      {
-        label: 'Finder',
-        icon: 'https://primefaces.org/cdn/primeng/images/dock/finder.svg',
-        command: () => this.openFinder()
-      },
-      {
-        label: 'Terminal',
-        icon: 'https://primefaces.org/cdn/primeng/images/dock/terminal.svg',
-        command: () => this.openTerminal()
-      }
-    ];
-  }
-
-  openFinder() {
-    this.showDialog('Finder', '', 'finder', '60vw', '400px');
-  }
-
-  openTerminal() {
-    this.showDialog('Terminal', '', 'terminal', '70vw', '450px');
-  }
-
-  onFileOpened(file: PreviewFile) {
-    const id = `dialog-${this.dialogIdCounter++}`;
-    const newDialog: AppDialog = {
-      id,
-      title: file.name,
-      content: '',
-      type: 'preview',
-      width: '80vw',
-      height: '80vh',
-      previewType: file.type,
-      fileUrl: file.url,
-      visible: true,
-      loading: true
-    };
-    this.dialogs.push(newDialog);
-    
-    // Simulate loading - remove loading after small delay to show file
-    setTimeout(() => {
-      const dialog = this.dialogs.find(d => d.id === id);
-      if (dialog) {
-        dialog.loading = false;
-      }
-    }, 100);
-  }
-
-  showDialog(title: string, content: string, type: string = 'text', width: string = '50vw', height: string = 'auto', previewType: string = '', fileUrl: string = '') {
-    const id = `dialog-${this.dialogIdCounter++}`;
-    const newDialog: AppDialog = {
-      id,
-      title,
-      content,
-      type,
-      width,
-      height,
-      previewType,
-      fileUrl,
-      visible: true
-    };
-    this.dialogs.push(newDialog);
-  }
-
-  closeDialog(id: string) {
-    const dialog = this.dialogs.find(d => d.id === id);
-    if (dialog) {
-      dialog.visible = false;
+    constructor(
+        @Inject(PLATFORM_ID) private platformId: any,
+        public dialogService: DialogService,
+        private http: HttpClient
+    ) {
+        this.isBrowser = isPlatformBrowser(platformId);
     }
-  }
 
-  removeDialog(id: string) {
-    this.dialogs = this.dialogs.filter(d => d.id !== id);
-  }
-}
+    ngOnInit() {
+        this.menuItems = [];
 
-export interface AppDialog {
-  id: string;
-  title: string;
-  content: string;
-  type: string;
-  width: string;
-  height: string;
-  previewType: string;
-  fileUrl: string;
-  visible: boolean;
-  loading?: boolean;
+        this.dockItems = [
+            {
+                label: 'Finder',
+                icon: 'https://primefaces.org/cdn/primeng/images/dock/finder.svg',
+                command: () => this.dialogService.openFinder()
+            },
+            {
+                label: 'Terminal',
+                icon: 'https://primefaces.org/cdn/primeng/images/dock/terminal.svg',
+                command: () => this.dialogService.openTerminal()
+            }
+        ];
+
+        this.loadDesktopItems();
+    }
+
+    private loadDesktopItems() {
+        if (isPlatformBrowser(this.platformId)) {
+            this.desktopLoading = true;
+            this.http.get<Manifest>('/files/manifest.json').subscribe({
+                next: (data) => {
+                    const desktopNode = data.folders['/Kyo/Desktop'];
+                    if (desktopNode) {
+                        this.desktopItems = [
+                            ...desktopNode.folders.map(name => ({ name, type: 'folder' as const })),
+                            ...desktopNode.files.map(name => this.desktopItemFromName(name))
+                        ];
+                    }
+                    this.desktopLoading = false;
+                },
+                error: () => {
+                    this.desktopLoading = false;
+                }
+            });
+        }
+    }
+
+    private desktopItemFromName(name: string): DesktopItem {
+        const ext = name.split('.').pop()?.toLowerCase() || '';
+        let type: 'html' | 'image' | 'folder' | 'text' = 'text';
+        if (['html', 'htm'].includes(ext)) type = 'html';
+        else if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp'].includes(ext)) type = 'image';
+
+        return {
+            name,
+            type,
+            url: `/files/${name}`
+        };
+    }
+
+    openDesktopItem(item: DesktopItem) {
+        if (item.type === 'folder') {
+            this.dialogService.openDialog('Finder', '', 'finder', '60vw', '400px', '', '', `/Kyo/${item.name}`);
+        } else if (item.type === 'html' || item.type === 'image') {
+            if (item.url) {
+                this.dialogService.openPreview({ name: item.name, type: item.type, url: item.url });
+            }
+        }
+    }
+
+    getDesktopIcon(item: DesktopItem): string {
+        switch (item.type) {
+            case 'html': return '🌐';
+            case 'image': return '🖼️';
+            case 'folder': return '📁';
+            default: return '📄';
+        }
+    }
 }

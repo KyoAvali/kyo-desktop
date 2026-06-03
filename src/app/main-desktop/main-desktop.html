@@ -1,6 +1,26 @@
-<div style="position: fixed; top: 26px; left: 0; width: 100vw; height: calc(100vh - 26px); background: url('/background.jpg') no-repeat center center / cover; overflow: visible; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding: 0 20px 20px 20px; box-sizing: border-box;">
+<div style="position: fixed; top: 26px; left: 0; width: 100vw; height: calc(100vh - 26px); background: url('/files/background.jpg') no-repeat center center / cover; overflow: visible; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding: 0 20px 20px 20px; box-sizing: border-box;">
     <p-menubar [model]="menuItems" [style]="{'width': '100%', 'position': 'fixed', 'top': 0, 'left': 0, 'z-index': 1000, 'height': '26px', 'padding': '0 8px'}">
     </p-menubar>
+
+    @if (desktopLoading) {
+        <div class="desktop-icons">
+            @for (i of [1,2,3,4]; track i) {
+                <div class="desktop-icon-skeleton">
+                    <p-skeleton shape="circle" size="48px" styleClass="mb-2"></p-skeleton>
+                    <p-skeleton width="60px" height="12px"></p-skeleton>
+                </div>
+            }
+        </div>
+    } @else {
+        <div class="desktop-icons">
+            @for (item of desktopItems; track item.name) {
+                <div class="desktop-icon" (click)="openDesktopItem(item)">
+                    <span class="icon-symbol">{{ getDesktopIcon(item) }}</span>
+                    <span class="icon-label">{{ item.name }}</span>
+                </div>
+            }
+        </div>
+    }
 
     @if (isBrowser) {
     <p-dock [model]="dockItems" position="bottom">
@@ -12,7 +32,7 @@
     </p-dock>
     }
 
-    @for (dialog of dialogs; track dialog.id) {
+    @for (dialog of dialogService.dialogs | async; track dialog.id) {
         <p-dialog
             [(visible)]="dialog.visible"
             [modal]="false"
@@ -21,9 +41,9 @@
             [maximizable]="true"
             [header]="dialog.title"
             [style]="{'width': dialog.width, 'height': dialog.height}"
-            (onHide)="removeDialog(dialog.id)">
+            (onHide)="dialogService.remove(dialog.id)">
             @if (dialog.type === 'finder') {
-                <app-finder (fileOpened)="onFileOpened($event)"></app-finder>
+                <app-finder [initialPath]="dialog.finderPath ?? '/Kyo'"></app-finder>
             } @else if (dialog.type === 'terminal') {
                 <app-terminal></app-terminal>
             } @else if (dialog.type === 'preview') {
@@ -38,7 +58,7 @@
                             <img [src]="dialog.fileUrl" [alt]="dialog.title" />
                         }
                         @if (dialog.previewType === 'html') {
-                            <iframe [src]="dialog.fileUrl" sandbox="allow-same-origin"></iframe>
+                            <iframe [src]="dialog.safeFileUrl" sandbox="allow-same-origin"></iframe>
                         }
                     </div>
                 }

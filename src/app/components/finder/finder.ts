@@ -1,6 +1,7 @@
-import { Component, EventEmitter, Inject, OnInit, Output, PLATFORM_ID } from '@angular/core';
+import { Component, Inject, Input, OnChanges, OnInit, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
+import { DialogService } from '../../services/dialog.service';
 
 interface Manifest {
     folders: Record<string, FolderNode>;
@@ -17,17 +18,18 @@ interface FolderNode {
     templateUrl: './finder.html',
     styleUrl: './finder.scss'
 })
-export class Finder implements OnInit {
-    currentPath = '/Desktop';
+export class Finder implements OnInit, OnChanges {
+    currentPath = '/Kyo';
     currentFiles: FileInfo[] = [];
     currentFolders: string[] = [];
 
-    @Output() fileOpened = new EventEmitter<PreviewFile>();
+    @Input() initialPath: string = '/Kyo';
 
     private manifest: Manifest | null = null;
 
     constructor(
         private http: HttpClient,
+        private dialogService: DialogService,
         @Inject(PLATFORM_ID) private platformId: object
     ) {}
 
@@ -37,22 +39,32 @@ export class Finder implements OnInit {
         }
     }
 
+    ngOnChanges() {
+        if (this.manifest && this.initialPath) {
+            this.loadFolder(this.initialPath);
+        }
+    }
+
     private loadManifest() {
         this.http.get<Manifest>('/files/manifest.json').subscribe({
             next: (data) => {
                 this.manifest = data;
-                this.loadFolder('/Desktop');
+                this.loadFolder(this.initialPath || '/Kyo');
             },
             error: (err) => {
                 console.error('Failed to load finder manifest', err);
-                this.loadFolder('/Desktop');
+                this.loadFolder(this.initialPath || '/Kyo');
             }
         });
     }
 
     navigateTo(location: string) {
-        const path = `/Desktop/${location.charAt(0).toUpperCase() + location.slice(1)}`;
-        this.loadFolder(path);
+        if (location === 'kyo') {
+            this.loadFolder('/Kyo');
+        } else {
+            const path = `/Kyo/${location.charAt(0).toUpperCase() + location.slice(1)}`;
+            this.loadFolder(path);
+        }
     }
 
     openFolder(folder: string) {
@@ -88,11 +100,7 @@ export class Finder implements OnInit {
 
     openFile(file: FileInfo) {
         if ((file.type === 'html' || file.type === 'image') && file.url) {
-            this.fileOpened.emit({
-                name: file.name,
-                type: file.type,
-                url: file.url
-            });
+            this.dialogService.openPreview({ name: file.name, type: file.type, url: file.url });
         }
     }
 
@@ -126,10 +134,4 @@ interface FileInfo {
     type: string;
     size: number;
     url?: string;
-}
-
-interface PreviewFile {
-    name: string;
-    type: string;
-    url: string;
 }
