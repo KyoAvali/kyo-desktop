@@ -10,6 +10,7 @@ import { Finder } from '../components/finder/finder';
 import { TerminalComponent } from '../components/terminal/terminal';
 import { DialogService } from '../services/dialog.service';
 import { UrlParameterService } from '../services/url-parameter.service';
+import { ManifestService } from '../services/manifest.service';
 import { AsyncPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { SkeletonModule } from 'primeng/skeleton';
@@ -50,7 +51,8 @@ export class MainDesktop implements OnInit {
         public dialogService: DialogService,
         private http: HttpClient,
         private router: Router,
-        private urlParameterService: UrlParameterService
+        private urlParameterService: UrlParameterService,
+        private manifestService: ManifestService
     ) {
         this.isBrowser = isPlatformBrowser(platformId);
     }
@@ -80,6 +82,55 @@ export class MainDesktop implements OnInit {
         this.handleRouteChanges();
     }
 
+    private loadDesktopItems() {
+        if (!isPlatformBrowser(this.platformId)) return;
+
+        this.desktopLoading = true;
+        const manifest = this.manifestService.getManifestSync();
+        
+        if (manifest) {
+            // If manifest is cached, still show skeleton briefly for smooth UX
+            setTimeout(() => {
+                this.loadDesktopItemsFromManifest(manifest);
+            }, 300);
+        } else {
+            this.manifestService.getManifest().subscribe({
+                next: (manifest) => {
+                    this.loadDesktopItemsFromManifest(manifest);
+                },
+                error: () => {
+                    this.loadDesktopItemsFallback();
+                }
+            });
+        }
+    }
+
+    private loadDesktopItemsFromManifest(manifest: Manifest | null) {
+        // Keep loading state for minimum time to prevent flicker
+        setTimeout(() => {
+            if (manifest) {
+                const desktopNode = manifest.folders['/Kyo/Desktop'];
+                if (desktopNode) {
+                    this.desktopItems = [
+                        ...desktopNode.folders.map(name => ({ name, type: 'folder' as const })),
+                        ...desktopNode.files.map(name => this.desktopItemFromName(name))
+                    ];
+                }
+            }
+            this.desktopLoading = false;
+        }, 200);
+    }
+
+    private loadDesktopItemsFallback() {
+        setTimeout(() => {
+            this.desktopItems = [
+                { name: 'Documents', type: 'folder' as const },
+                { name: 'Images', type: 'folder' as const }
+            ];
+            this.desktopLoading = false;
+        }, 200);
+    }
+
     private handleRouteChanges() {
         if (!isPlatformBrowser(this.platformId)) return;
 
@@ -88,27 +139,6 @@ export class MainDesktop implements OnInit {
                 this.urlParameterService.processUrlParams();
             }
         });
-    }
-
-    private loadDesktopItems() {
-        if (isPlatformBrowser(this.platformId)) {
-            this.desktopLoading = true;
-            this.http.get<Manifest>('/files/manifest.json').subscribe({
-                next: (data) => {
-                    const desktopNode = data.folders['/Kyo/Desktop'];
-                    if (desktopNode) {
-                        this.desktopItems = [
-                            ...desktopNode.folders.map(name => ({ name, type: 'folder' as const })),
-                            ...desktopNode.files.map(name => this.desktopItemFromName(name))
-                        ];
-                    }
-                    this.desktopLoading = false;
-                },
-                error: () => {
-                    this.desktopLoading = false;
-                }
-            });
-        }
     }
 
     private desktopItemFromName(name: string): DesktopItem {

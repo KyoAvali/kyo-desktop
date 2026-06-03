@@ -2,6 +2,16 @@ import { Component, Inject, Input, OnChanges, OnInit, PLATFORM_ID } from '@angul
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { DialogService } from '../../services/dialog.service';
+import { ManifestService } from '../../services/manifest.service';
+
+interface Manifest {
+    folders: Record<string, FolderNode>;
+}
+
+interface FolderNode {
+    folders: string[];
+    files: string[];
+}
 
 interface Manifest {
     folders: Record<string, FolderNode>;
@@ -27,11 +37,10 @@ export class Finder implements OnInit, OnChanges {
     @Input() initialPath: string = '/Kyo';
     @Input() targetFile: string | null = null;
 
-    private manifest: Manifest | null = null;
-
     constructor(
         private http: HttpClient,
         private dialogService: DialogService,
+        private manifestService: ManifestService,
         @Inject(PLATFORM_ID) private platformId: object
     ) {}
 
@@ -42,9 +51,10 @@ export class Finder implements OnInit, OnChanges {
     }
 
     ngOnChanges() {
-        if (this.manifest) {
+        const manifest = this.manifestService.getManifestSync();
+        if (manifest) {
             const pathToLoad = this.initialPath || '/Kyo';
-            this.loadFolder(pathToLoad);
+            this.loadFolder(pathToLoad, manifest);
             if (this.targetFile) {
                 this.selectedFile = this.targetFile;
             }
@@ -52,35 +62,36 @@ export class Finder implements OnInit, OnChanges {
     }
 
     private loadManifest() {
-        this.http.get<Manifest>('/files/manifest.json').subscribe({
-            next: (data) => {
-                this.manifest = data;
-                this.loadFolder(this.initialPath || '/Kyo');
+        this.manifestService.getManifest().subscribe({
+            next: (manifest) => {
+                if (manifest) {
+                    this.loadFolder(this.initialPath || '/Kyo', manifest);
+                }
             },
             error: (err) => {
                 console.error('Failed to load finder manifest', err);
-                this.loadFolder(this.initialPath || '/Kyo');
+                this.loadFolder(this.initialPath || '/Kyo', null);
             }
         });
     }
 
     navigateTo(location: string) {
         if (location === 'kyo') {
-            this.loadFolder('/Kyo');
+            this.loadFolder('/Kyo', this.manifestService.getManifestSync());
         } else {
             const path = `/Kyo/${location.charAt(0).toUpperCase() + location.slice(1)}`;
-            this.loadFolder(path);
+            this.loadFolder(path, this.manifestService.getManifestSync());
         }
     }
 
     openFolder(folder: string) {
         const path = `${this.currentPath}/${folder}`;
-        this.loadFolder(path);
+        this.loadFolder(path, this.manifestService.getManifestSync());
     }
 
-    loadFolder(path: string) {
-        if (this.manifest && this.manifest.folders[path]) {
-            const node = this.manifest.folders[path];
+    loadFolder(path: string, manifest: Manifest | null) {
+        if (manifest && manifest.folders[path]) {
+            const node = manifest.folders[path];
             this.currentFolders = node.folders;
             this.currentFiles = node.files.map(name => this.fileFromName(name));
         } else {
